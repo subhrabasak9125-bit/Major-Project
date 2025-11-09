@@ -368,7 +368,7 @@ A: This is an academic project. Review licenses of used libraries.
 ### Contact
 - **Developers:** SMIT Students
 - **Project Type:** Academic
-- **Year:** 2024-2025
+- **Year:** 2025-2026
 
 ## 📝 License
 
