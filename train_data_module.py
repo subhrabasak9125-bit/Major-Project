@@ -26,122 +26,117 @@ class TrainDataModule:
         self.create_ui()
     
     def create_ui(self):
-        # Main container
+        # Main container with scrollbar
         main_container = tk.Frame(self.window, bg='#0a0a2e')
         main_container.pack(fill='both', expand=True, padx=20, pady=20)
         
         # Title
         title_label = tk.Label(main_container, text="TRAIN FACE RECOGNITION MODEL",
                               fg='#00ffff', bg='#0a0a2e', font=('Arial', 24, 'bold'))
-        title_label.pack(pady=(0, 20))
+        title_label.pack(pady=(0, 15))
         
-        # Info section
+        # Info section (COMPACT)
         info_frame = tk.LabelFrame(main_container, text="Training Information",
-                                  font=('Arial', 14, 'bold'), bg='#16213e',
+                                  font=('Arial', 12, 'bold'), bg='#16213e',
                                   fg='#00ffff', bd=2, relief='raised')
-        info_frame.pack(fill='x', pady=(0, 20))
+        info_frame.pack(fill='x', pady=(0, 15))
         
-        info_text = """
-        This module will train the face recognition model using the collected photo samples.
-        
-        Steps:
-        1. Photo samples are loaded from the 'data' directory
-        2. Faces are detected and processed
-        3. The LBPH (Local Binary Patterns Histograms) model is trained
-        4. The trained model is saved for recognition
-        
-        Note: Make sure you have collected photo samples before training.
-        """
+        info_text = """This module trains the face recognition model using collected photo samples.
+Steps: 1) Load samples from 'data' directory  2) Detect and process faces  3) Train LBPH model  4) Save trained model
+Note: Collect photo samples before training (50-100 photos per student recommended)."""
         
         tk.Label(info_frame, text=info_text, fg='white', bg='#16213e',
-                font=('Arial', 11), justify='left').pack(padx=20, pady=20)
+                font=('Arial', 9), justify='left', wraplength=900).pack(padx=15, pady=10)
         
-        # Statistics frame
+        # Statistics frame (COMPACT)
         stats_frame = tk.LabelFrame(main_container, text="Training Statistics",
-                                   font=('Arial', 14, 'bold'), bg='#16213e',
+                                   font=('Arial', 12, 'bold'), bg='#16213e',
                                    fg='#00ffff', bd=2, relief='raised')
-        stats_frame.pack(fill='x', pady=(0, 20))
+        stats_frame.pack(fill='x', pady=(0, 15))
         
         stats_inner = tk.Frame(stats_frame, bg='#16213e')
-        stats_inner.pack(padx=20, pady=20)
+        stats_inner.pack(padx=20, pady=15)
         
-        # Statistics labels
+        # Statistics labels in 2x2 grid
         self.students_label = tk.Label(stats_inner, text="Students Found: 0",
                                       fg='white', bg='#16213e',
-                                      font=('Arial', 12, 'bold'))
-        self.students_label.grid(row=0, column=0, padx=20, pady=10, sticky='w')
+                                      font=('Arial', 11, 'bold'))
+        self.students_label.grid(row=0, column=0, padx=20, pady=5, sticky='w')
         
         self.images_label = tk.Label(stats_inner, text="Total Images: 0",
                                     fg='white', bg='#16213e',
-                                    font=('Arial', 12, 'bold'))
-        self.images_label.grid(row=0, column=1, padx=20, pady=10, sticky='w')
+                                    font=('Arial', 11, 'bold'))
+        self.images_label.grid(row=0, column=1, padx=20, pady=5, sticky='w')
         
         self.faces_label = tk.Label(stats_inner, text="Faces Detected: 0",
                                    fg='white', bg='#16213e',
-                                   font=('Arial', 12, 'bold'))
-        self.faces_label.grid(row=1, column=0, padx=20, pady=10, sticky='w')
+                                   font=('Arial', 11, 'bold'))
+        self.faces_label.grid(row=1, column=0, padx=20, pady=5, sticky='w')
         
         self.status_label = tk.Label(stats_inner, text="Status: Ready",
                                     fg='#2ecc71', bg='#16213e',
-                                    font=('Arial', 12, 'bold'))
-        self.status_label.grid(row=1, column=1, padx=20, pady=10, sticky='w')
+                                    font=('Arial', 11, 'bold'))
+        self.status_label.grid(row=1, column=1, padx=20, pady=5, sticky='w')
         
-        # Progress frame
+        # Progress frame (COMPACT)
         progress_frame = tk.LabelFrame(main_container, text="Training Progress",
-                                      font=('Arial', 14, 'bold'), bg='#16213e',
+                                      font=('Arial', 12, 'bold'), bg='#16213e',
                                       fg='#00ffff', bd=2, relief='raised')
-        progress_frame.pack(fill='x', pady=(0, 20))
+        progress_frame.pack(fill='x', pady=(0, 15))
         
         progress_inner = tk.Frame(progress_frame, bg='#16213e')
-        progress_inner.pack(padx=20, pady=20, fill='x')
+        progress_inner.pack(padx=20, pady=15, fill='x')
         
         self.progress_bar = ttk.Progressbar(progress_inner, length=800,
                                            mode='determinate')
-        self.progress_bar.pack(fill='x', pady=10)
+        self.progress_bar.pack(fill='x', pady=5)
         
         self.progress_label = tk.Label(progress_inner, text="0%",
                                       fg='#00ffff', bg='#16213e',
-                                      font=('Arial', 12, 'bold'))
+                                      font=('Arial', 11, 'bold'))
         self.progress_label.pack()
         
-        # Log frame
+        # Log frame (REDUCED HEIGHT)
         log_frame = tk.LabelFrame(main_container, text="Training Log",
-                                 font=('Arial', 14, 'bold'), bg='#16213e',
+                                 font=('Arial', 12, 'bold'), bg='#16213e',
                                  fg='#00ffff', bd=2, relief='raised')
-        log_frame.pack(fill='both', expand=True, pady=(0, 20))
+        log_frame.pack(fill='both', expand=True, pady=(0, 15))
         
-        # Text widget for log
-        self.log_text = tk.Text(log_frame, height=10, bg='#2c3e50',
-                               fg='white', font=('Courier', 10))
-        self.log_text.pack(padx=10, pady=10, fill='both', expand=True)
+        # Text widget for log with reduced height
+        log_container = tk.Frame(log_frame, bg='#16213e')
+        log_container.pack(padx=10, pady=10, fill='both', expand=True)
         
-        scrollbar = tk.Scrollbar(log_frame, command=self.log_text.yview)
+        self.log_text = tk.Text(log_container, height=6, bg='#2c3e50',
+                               fg='white', font=('Courier', 9))
+        self.log_text.pack(side='left', fill='both', expand=True)
+        
+        scrollbar = tk.Scrollbar(log_container, command=self.log_text.yview)
         self.log_text.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side='right', fill='y')
         
-        # Buttons frame
+        # Buttons frame - ALWAYS VISIBLE AT BOTTOM
         button_frame = tk.Frame(main_container, bg='#0a0a2e')
-        button_frame.pack(fill='x')
+        button_frame.pack(fill='x', side='bottom')
         
         self.scan_btn = tk.Button(button_frame, text="🔍 SCAN IMAGES",
                                  bg='#3498db', fg='white',
-                                 font=('Arial', 12, 'bold'),
-                                 width=20, height=2,
+                                 font=('Arial', 11, 'bold'),
+                                 width=18, height=2,
                                  command=self.scan_images)
         self.scan_btn.pack(side='left', padx=10)
         
         self.train_btn = tk.Button(button_frame, text="🧠 START TRAINING",
                                   bg='#2ecc71', fg='white',
-                                  font=('Arial', 12, 'bold'),
-                                  width=20, height=2,
+                                  font=('Arial', 11, 'bold'),
+                                  width=18, height=2,
                                   command=self.start_training,
                                   state='disabled')
         self.train_btn.pack(side='left', padx=10)
         
         tk.Button(button_frame, text="🚪 CLOSE",
                  bg='#e74c3c', fg='white',
-                 font=('Arial', 12, 'bold'),
-                 width=20, height=2,
+                 font=('Arial', 11, 'bold'),
+                 width=18, height=2,
                  command=self.window.destroy).pack(side='right', padx=10)
     
     def log(self, message):
