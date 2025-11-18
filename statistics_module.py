@@ -1,8 +1,3 @@
-"""
-statistics_module.py
-Real-Time Statistics Module for SMIT Face Recognition Attendance System
-Reads and calculates accurate statistics from actual file system data
-"""
 
 import os
 import csv
@@ -186,4 +181,5 @@ if __name__ == "__main__":
         status = "✅" if exists else "❌"
         print(f"   {status} {item.replace('_', ' ').title()}")
     
+
     print("\n" + "=" * 70)
