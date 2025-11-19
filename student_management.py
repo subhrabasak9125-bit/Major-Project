@@ -1,10 +1,9 @@
-
 import tkinter as tk
 from tkinter import ttk, messagebox
+from tkcalendar import DateEntry
 from datetime import datetime
 import csv
 import os
-import json
 
 class UpdatedStudentManagement:
     def __init__(self, parent):
@@ -78,7 +77,6 @@ class UpdatedStudentManagement:
         tk.Label(row1, text="Department:", fg='white', bg='#16213e',
                 font=('Arial', 10, 'bold')).pack(side='left', padx=(0,10))
         
-        # Updated departments as per SMIT requirements
         self.dept_combo = ttk.Combobox(row1, 
                                       values=["DCSE", "DCE", "DME", "DEE", "DETC"],
                                       width=18, state="readonly", font=('Arial', 10))
@@ -88,7 +86,6 @@ class UpdatedStudentManagement:
         tk.Label(row1, text="Academic Year:", fg='white', bg='#16213e',
                 font=('Arial', 10, 'bold')).pack(side='left', padx=(0,10))
         
-        # Generate years from 1999-2003 to 2026-2029
         years = [f"{y}-{y+3}" for y in range(1999, 2027)]
         self.year_combo = ttk.Combobox(row1, values=years, width=18,
                                       state="readonly", font=('Arial', 10))
@@ -102,7 +99,6 @@ class UpdatedStudentManagement:
         tk.Label(row2, text="Semester:", fg='white', bg='#16213e',
                 font=('Arial', 10, 'bold')).pack(side='left', padx=(0,10))
         
-        # Semesters 1-6 as required
         self.sem_combo = ttk.Combobox(row2,
                                      values=[f"Semester-{i}" for i in range(1, 7)],
                                      width=18, state="readonly", font=('Arial', 10))
@@ -146,12 +142,17 @@ class UpdatedStudentManagement:
         self.gender_combo.grid(row=1, column=3, padx=5, pady=5)
         self.gender_combo.set("Male")
         
-        # Row 3: DOB and Blood Group
+        # Row 3: DOB with Calendar Picker and Blood Group
         tk.Label(inner, text="Date of Birth:", fg='white', bg='#16213e',
                 font=('Arial', 10, 'bold')).grid(row=2, column=0, sticky='w', padx=5, pady=5)
-        self.dob_entry = tk.Entry(inner, width=20, font=('Arial', 10))
-        self.dob_entry.grid(row=2, column=1, padx=5, pady=5)
-        self.dob_entry.insert(0, "DD/MM/YYYY")
+        
+        # DateEntry widget with calendar picker
+        self.dob_calendar = DateEntry(inner, width=18, background='#3498db',
+                                     foreground='white', borderwidth=2,
+                                     font=('Arial', 10), date_pattern='dd/mm/yyyy',
+                                     mindate=datetime(1980, 1, 1),
+                                     maxdate=datetime.now())
+        self.dob_calendar.grid(row=2, column=1, padx=5, pady=5, sticky='w')
         
         tk.Label(inner, text="Blood Group:", fg='white', bg='#16213e',
                 font=('Arial', 10, 'bold')).grid(row=2, column=2, sticky='w', padx=5, pady=5)
@@ -242,13 +243,11 @@ class UpdatedStudentManagement:
         table_container = tk.Frame(table_frame, bg='#16213e')
         table_container.pack(fill='both', expand=True, padx=10, pady=10)
         
-        # Columns updated
-        columns = ("ID", "Name", "Reg No", "Dept", "Year", "Sem", "Gender", "Email", "Phone")
+        columns = ("ID", "Name", "Reg No", "Dept", "Year", "Sem", "DOB", "Gender", "Email", "Phone")
         self.tree = ttk.Treeview(table_container, columns=columns, show='headings', height=12)
         
-        # Column widths
         widths = {"ID": 80, "Name": 150, "Reg No": 120, "Dept": 80, 
-                 "Year": 100, "Sem": 90, "Gender": 70, "Email": 180, "Phone": 110}
+                 "Year": 100, "Sem": 90, "DOB": 100, "Gender": 70, "Email": 180, "Phone": 110}
         
         for col in columns:
             self.tree.heading(col, text=col)
@@ -266,7 +265,6 @@ class UpdatedStudentManagement:
         table_container.grid_rowconfigure(0, weight=1)
         table_container.grid_columnconfigure(0, weight=1)
         
-        # Double-click to edit
         self.tree.bind('<Double-1>', self.on_student_select)
         
         # Style
@@ -319,7 +317,7 @@ class UpdatedStudentManagement:
             'Semester': self.sem_combo.get(),
             'RegistrationNo': self.reg_entry.get().strip(),
             'Gender': self.gender_combo.get(),
-            'DOB': self.dob_entry.get().strip(),
+            'DOB': self.dob_calendar.get_date().strftime('%d/%m/%Y'),
             'BloodGroup': self.blood_combo.get(),
             'Email': self.email_entry.get().strip(),
             'Phone': self.phone_entry.get().strip(),
@@ -327,12 +325,10 @@ class UpdatedStudentManagement:
             'Address': self.address_entry.get().strip()
         }
         
-        # Check if exists
         if self.student_exists(student_data['StudentID']):
             messagebox.showerror("Error", "Student ID already exists! Use UPDATE instead.")
             return
         
-        # Save
         csv_file = 'student_data/students.csv'
         file_exists = os.path.isfile(csv_file)
         
@@ -378,8 +374,47 @@ class UpdatedStudentManagement:
             messagebox.showerror("Error", "Student not found! Use SAVE for new students.")
             return
         
-        # Implementation similar to save but updates existing record
-        messagebox.showinfo("Update", "Update functionality - see original code")
+        csv_file = 'student_data/students.csv'
+        temp_file = 'student_data/students_temp.csv'
+        
+        student_data = {
+            'StudentID': student_id,
+            'Name': self.student_name_entry.get().strip(),
+            'Department': self.dept_combo.get(),
+            'Year': self.year_combo.get(),
+            'Semester': self.sem_combo.get(),
+            'RegistrationNo': self.reg_entry.get().strip(),
+            'Gender': self.gender_combo.get(),
+            'DOB': self.dob_calendar.get_date().strftime('%d/%m/%Y'),
+            'BloodGroup': self.blood_combo.get(),
+            'Email': self.email_entry.get().strip(),
+            'Phone': self.phone_entry.get().strip(),
+            'FatherName': self.father_entry.get().strip(),
+            'Address': self.address_entry.get().strip()
+        }
+        
+        try:
+            with open(csv_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                fieldnames = reader.fieldnames
+                students = list(reader)
+            
+            for i, student in enumerate(students):
+                if student['StudentID'] == student_id:
+                    students[i] = student_data
+                    break
+            
+            with open(temp_file, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(students)
+            
+            os.replace(temp_file, csv_file)
+            self.load_students()
+            messagebox.showinfo("Success", "Student updated successfully!")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to update: {str(e)}")
     
     def delete_student(self):
         """Delete student"""
@@ -388,11 +423,34 @@ class UpdatedStudentManagement:
             messagebox.showerror("Error", "Enter Student ID to delete!")
             return
         
-        if messagebox.askyesno("Confirm", f"Delete student {student_id}?"):
-            # Delete implementation
+        if not self.student_exists(student_id):
+            messagebox.showerror("Error", "Student ID not found!")
+            return
+        
+        if not messagebox.askyesno("Confirm", f"Delete student {student_id}?"):
+            return
+        
+        csv_file = 'student_data/students.csv'
+        temp_file = 'student_data/students_temp.csv'
+        
+        try:
+            with open(csv_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                fieldnames = reader.fieldnames
+                students = [row for row in reader if row['StudentID'] != student_id]
+            
+            with open(temp_file, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(students)
+            
+            os.replace(temp_file, csv_file)
             self.load_students()
             self.reset_form()
-            messagebox.showinfo("Success", "Student deleted!")
+            messagebox.showinfo("Success", "Student deleted successfully!")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to delete: {str(e)}")
     
     def reset_form(self):
         """Clear all fields"""
@@ -403,8 +461,7 @@ class UpdatedStudentManagement:
         self.sem_combo.set("Select Semester")
         self.reg_entry.delete(0, 'end')
         self.gender_combo.set("Male")
-        self.dob_entry.delete(0, 'end')
-        self.dob_entry.insert(0, "DD/MM/YYYY")
+        self.dob_calendar.set_date(datetime.now())
         self.blood_combo.set("Select")
         self.email_entry.delete(0, 'end')
         self.phone_entry.delete(0, 'end')
@@ -427,8 +484,27 @@ class UpdatedStudentManagement:
             messagebox.showerror("Error", f"Failed to open photo capture: {str(e)}")
     
     def export_data(self):
-        """Export to JSON/CSV"""
-        messagebox.showinfo("Export", "Data exported successfully!")
+        """Export to JSON"""
+        try:
+            csv_file = 'student_data/students.csv'
+            json_file = 'student_data/students_export.json'
+            
+            if not os.path.isfile(csv_file):
+                messagebox.showwarning("Warning", "No data to export!")
+                return
+            
+            students = []
+            with open(csv_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                students = list(reader)
+            
+            import json
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump(students, f, indent=4, ensure_ascii=False)
+            
+            messagebox.showinfo("Success", f"Data exported to {json_file}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Export failed: {str(e)}")
     
     def load_students(self):
         """Load all students"""
@@ -459,6 +535,7 @@ class UpdatedStudentManagement:
             data.get('Department', ''),
             data.get('Year', ''),
             data.get('Semester', ''),
+            data.get('DOB', ''),
             data.get('Gender', ''),
             data.get('Email', ''),
             data.get('Phone', '')
@@ -473,12 +550,38 @@ class UpdatedStudentManagement:
             messagebox.showwarning("Warning", "Select search criteria and enter value!")
             return
         
-        # Clear tree
         for item in self.tree.get_children():
             self.tree.delete(item)
         
-        # Search and display
-        messagebox.showinfo("Search", "Search functionality implemented")
+        csv_file = 'student_data/students.csv'
+        if not os.path.isfile(csv_file):
+            messagebox.showinfo("Info", "No student records found!")
+            return
+        
+        search_map = {
+            "Student ID": "StudentID",
+            "Name": "Name",
+            "Registration No": "RegistrationNo",
+            "Department": "Department"
+        }
+        
+        found = 0
+        try:
+            with open(csv_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                column = search_map.get(search_by)
+                
+                for row in reader:
+                    if search_val.lower() in str(row.get(column, '')).lower():
+                        self.add_to_tree(row)
+                        found += 1
+            
+            if found == 0:
+                messagebox.showinfo("Search", "No matching records found!")
+            else:
+                messagebox.showinfo("Search", f"Found {found} matching record(s)!")
+        except Exception as e:
+            messagebox.showerror("Error", f"Search failed: {str(e)}")
     
     def show_all(self):
         """Show all students"""
@@ -496,21 +599,43 @@ class UpdatedStudentManagement:
         
         self.reset_form()
         
-        # Populate fields from tree values
         self.student_id_entry.insert(0, values[0])
         self.student_name_entry.insert(0, values[1])
         self.reg_entry.insert(0, values[2])
         self.dept_combo.set(values[3])
         self.year_combo.set(values[4])
         self.sem_combo.set(values[5])
-        self.gender_combo.set(values[6])
-        self.email_entry.insert(0, values[7])
-        self.phone_entry.insert(0, values[8])
+        
+        # Set DOB from calendar
+        try:
+            dob_str = values[6]
+            if dob_str:
+                dob_obj = datetime.strptime(dob_str, '%d/%m/%Y')
+                self.dob_calendar.set_date(dob_obj)
+        except:
+            pass
+        
+        self.gender_combo.set(values[7])
+        self.email_entry.insert(0, values[8])
+        self.phone_entry.insert(0, values[9])
+        
+        # Load additional details
+        csv_file = 'student_data/students.csv'
+        try:
+            with open(csv_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row['StudentID'] == values[0]:
+                        self.blood_combo.set(row.get('BloodGroup', 'Select'))
+                        self.father_entry.insert(0, row.get('FatherName', ''))
+                        self.address_entry.insert(0, row.get('Address', ''))
+                        break
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
     root = tk.Tk()
     root.withdraw()
     app = UpdatedStudentManagement(root)
-
     root.mainloop()
