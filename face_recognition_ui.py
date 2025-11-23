@@ -1,3 +1,4 @@
+
 import os
 import tkinter as tk
 from tkinter import messagebox
@@ -12,7 +13,18 @@ from PIL import Image, ImageTk
 import cv2
 
 # Import statistics module
-from statistics_module import RealTimeStatistics
+try:
+    from statistics_module import RealTimeStatistics
+    STATS_AVAILABLE = True
+except ImportError:
+    STATS_AVAILABLE = False
+
+# Import DISHA voice assistant
+try:
+    from disha_voice_assistant import DISHAIntegration
+    DISHA_AVAILABLE = True
+except ImportError:
+    DISHA_AVAILABLE = False
 
 # Optional pygame for sound
 try:
@@ -33,7 +45,7 @@ class FaceRecognitionUI:
 
         self.root = root or ctk.CTk()
         self.root.title("SMIT Face Recognition Attendance System")
-        self.root.geometry("1280x780")
+        self.root.geometry("1400x900")  # LARGER WINDOW
         
         try:
             self.root.state("zoomed")
@@ -41,7 +53,13 @@ class FaceRecognitionUI:
             pass
 
         # Initialize statistics module
-        self.stats_module = RealTimeStatistics()
+        if STATS_AVAILABLE:
+            self.stats_module = RealTimeStatistics()
+        else:
+            self.stats_module = None
+
+        # Initialize DISHA
+        self.disha = None
 
         # Optional video capture for background
         self.cap = None
@@ -75,7 +93,8 @@ class FaceRecognitionUI:
         self.update_clock()
         
         # Start statistics auto-update
-        self.root.after(2000, self.schedule_stats_update)
+        if self.stats_module:
+            self.root.after(2000, self.schedule_stats_update)
         
         # Start music if available
         if PYGAME_AVAILABLE and MUSIC_PATH and os.path.exists(MUSIC_PATH):
@@ -86,7 +105,7 @@ class FaceRecognitionUI:
                 pass
 
     def build_ui(self):
-        """Build the main UI structure"""
+        """Build the main UI structure with LARGER elements"""
         
         # Main container
         self.main_frame = ctk.CTkFrame(self.root, fg_color="#0a0a2e")
@@ -110,57 +129,98 @@ class FaceRecognitionUI:
         self.build_footer()
         
     def build_header(self):
-        """Build header with title and controls"""
+        """Build header with LARGER title and controls"""
         header = ctk.CTkFrame(self.content_frame, fg_color=("gray15", "gray15"), 
-                             height=80)
-        header.pack(fill="x", padx=10, pady=10)
+                             height=100)  # LARGER HEIGHT
+        header.pack(fill="x", padx=15, pady=15)
         header.pack_propagate(False)
         
+        # Left side - Title
+        title_frame = ctk.CTkFrame(header, fg_color="transparent")
+        title_frame.pack(side="left", fill="both", expand=True, padx=20)
+        
         # Title
-        title = ctk.CTkLabel(header, 
+        title = ctk.CTkLabel(title_frame, 
                             text="🎓 SMIT FACE RECOGNITION ATTENDANCE SYSTEM",
-                            font=ctk.CTkFont(size=22, weight="bold"),
+                            font=ctk.CTkFont(size=26, weight="bold"),  # LARGER FONT
                             text_color="#00d9ff")
-        title.pack(side="left", padx=20, pady=10)
+        title.pack(anchor="w", pady=(10, 0))
         
         # Subtitle
-        subtitle = ctk.CTkLabel(header, 
-                               text="Smart Attendance • Powered by AI",
-                               font=ctk.CTkFont(size=11),
+        subtitle = ctk.CTkLabel(title_frame, 
+                               text="Smart Attendance • Powered by AI • With DISHA Voice Assistant",
+                               font=ctk.CTkFont(size=13),  # LARGER FONT
                                text_color="gray70")
-        subtitle.place(relx=0.02, rely=0.6)
+        subtitle.pack(anchor="w", pady=(5, 0))
         
-        # Clock
-        self.clock_label = ctk.CTkLabel(header, text="", 
-                                       font=ctk.CTkFont(size=13, weight="bold"),
+        # Right side - Controls
+        controls_frame = ctk.CTkFrame(header, fg_color="transparent")
+        controls_frame.pack(side="right", padx=20)
+        
+        # Row 1 - Clock
+        self.clock_label = ctk.CTkLabel(controls_frame, text="", 
+                                       font=ctk.CTkFont(size=16, weight="bold"),  # LARGER FONT
                                        text_color="#00d9ff")
-        self.clock_label.place(relx=0.68, rely=0.25)
+        self.clock_label.grid(row=0, column=0, columnspan=3, pady=(5, 10))
+        
+        # Row 2 - Buttons (MUCH LARGER)
+        # DISHA button - ALWAYS VISIBLE
+        self.disha_btn = ctk.CTkButton(controls_frame, 
+                                      text="🎤 DISHA", 
+                                      width=140,      # LARGER WIDTH
+                                      height=50,      # LARGER HEIGHT
+                                      command=self.toggle_disha,
+                                      fg_color="#9b59b6",
+                                      hover_color="#8e44ad",
+                                      font=ctk.CTkFont(size=16, weight="bold"),  # LARGER FONT
+                                      corner_radius=10)
+        self.disha_btn.grid(row=1, column=0, padx=5, pady=5)
         
         # Refresh button
-        refresh_btn = ctk.CTkButton(header, text="🔄", width=70,
-                                    command=self.refresh_statistics_manual,
-                                    fg_color="#2ecc71",
-                                    hover_color="#27ae60")
-        refresh_btn.place(relx=0.88, rely=0.3)
+        refresh_btn = ctk.CTkButton(controls_frame, 
+                                   text="🔄 Refresh", 
+                                   width=140,       # LARGER WIDTH
+                                   height=50,       # LARGER HEIGHT
+                                   command=self.refresh_statistics_manual,
+                                   fg_color="#2ecc71",
+                                   hover_color="#27ae60",
+                                   font=ctk.CTkFont(size=16, weight="bold"),  # LARGER FONT
+                                   corner_radius=10)
+        refresh_btn.grid(row=1, column=1, padx=5, pady=5)
         
         # Music controls (if available)
         if PYGAME_AVAILABLE and MUSIC_PATH:
-            self.music_btn = ctk.CTkButton(header, text="🎵", width=70,
-                                          command=self.toggle_music)
-            self.music_btn.place(relx=0.94, rely=0.3)
+            self.music_btn = ctk.CTkButton(controls_frame, 
+                                          text="🎵 Music", 
+                                          width=140,    # LARGER WIDTH
+                                          height=50,    # LARGER HEIGHT
+                                          command=self.toggle_music,
+                                          font=ctk.CTkFont(size=16, weight="bold"),  # LARGER FONT
+                                          corner_radius=10)
+            self.music_btn.grid(row=1, column=2, padx=5, pady=5)
 
     def build_stats_cards(self):
-        """Build statistics cards with REAL data"""
+        """Build statistics cards with LARGER text"""
         stats_container = ctk.CTkFrame(self.content_frame, 
-                                      fg_color=("gray12", "gray12"))
-        stats_container.pack(fill="x", padx=10, pady=(0, 10))
+                                      fg_color=("gray12", "gray12"),
+                                      height=140)  # LARGER HEIGHT
+        stats_container.pack(fill="x", padx=15, pady=(0, 15))
+        stats_container.pack_propagate(False)
         
         # Configure grid
         for i in range(4):
             stats_container.columnconfigure(i, weight=1, uniform="stat")
         
         # Get REAL statistics
-        real_stats = self.get_real_statistics()
+        if self.stats_module:
+            real_stats = self.get_real_statistics()
+        else:
+            real_stats = {
+                'total_students': 0,
+                'present_today': 0,
+                'photos_collected': 0,
+                'models_trained': 0
+            }
         
         # Stats data with real values
         stats = [
@@ -176,30 +236,30 @@ class FaceRecognitionUI:
         
         for i, (label, value, color) in enumerate(stats):
             card = ctk.CTkFrame(stats_container, fg_color=("gray14", "gray14"),
-                               corner_radius=10)
-            card.grid(row=0, column=i, padx=8, pady=12, sticky="nsew")
+                               corner_radius=15)  # LARGER CORNER RADIUS
+            card.grid(row=0, column=i, padx=10, pady=15, sticky="nsew")
             
             # Icon/Title
             title_label = ctk.CTkLabel(card, text=label,
-                                      font=ctk.CTkFont(size=12, weight="bold"),
+                                      font=ctk.CTkFont(size=15, weight="bold"),  # LARGER FONT
                                       text_color="gray80")
-            title_label.pack(pady=(15, 5))
+            title_label.pack(pady=(20, 10))
             
             # Value
             value_label = ctk.CTkLabel(card, text=str(value),
-                                      font=ctk.CTkFont(size=28, weight="bold"),
+                                      font=ctk.CTkFont(size=36, weight="bold"),  # LARGER FONT
                                       text_color=color)
-            value_label.pack(pady=(0, 15))
+            value_label.pack(pady=(0, 20))
             
             # Store reference for updates
             self.stat_labels.append(value_label)
             self.stat_values[label] = value
 
     def build_function_grid(self):
-        """Build main function buttons grid"""
+        """Build main function buttons grid with LARGER buttons"""
         grid_container = ctk.CTkFrame(self.content_frame, 
                                      fg_color=("gray12", "gray12"))
-        grid_container.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        grid_container.pack(fill="both", expand=True, padx=15, pady=(0, 15))
         
         # Configure grid - 4 columns x 2 rows
         for i in range(4):
@@ -225,50 +285,52 @@ class FaceRecognitionUI:
             
             # Card frame
             card = ctk.CTkFrame(grid_container, fg_color=("gray14", "gray14"),
-                               corner_radius=12)
-            card.grid(row=row, column=col, padx=10, pady=10, sticky="nsew")
+                               corner_radius=15)  # LARGER CORNER RADIUS
+            card.grid(row=row, column=col, padx=12, pady=12, sticky="nsew")
             
             # Icon
             icon_label = ctk.CTkLabel(card, text=icon, 
-                                     font=ctk.CTkFont(size=36))
-            icon_label.pack(pady=(20, 5))
+                                     font=ctk.CTkFont(size=48))  # LARGER ICON
+            icon_label.pack(pady=(25, 10))
             
             # Text
             text_label = ctk.CTkLabel(card, text=text,
-                                     font=ctk.CTkFont(size=13, weight="bold"),
+                                     font=ctk.CTkFont(size=16, weight="bold"),  # LARGER FONT
                                      text_color="gray90")
-            text_label.pack(pady=(0, 10))
+            text_label.pack(pady=(0, 15))
             
             # Button
             btn = ctk.CTkButton(card, text="Open", 
                                command=command,
                                fg_color=color,
                                hover_color=self.darken_color(color),
-                               corner_radius=8,
-                               height=35,
-                               font=ctk.CTkFont(size=11, weight="bold"))
-            btn.pack(pady=(0, 20), padx=20, fill="x")
+                               corner_radius=10,
+                               height=45,  # LARGER HEIGHT
+                               font=ctk.CTkFont(size=14, weight="bold"))  # LARGER FONT
+            btn.pack(pady=(0, 25), padx=25, fill="x")
 
     def build_footer(self):
-        """Build footer"""
+        """Build footer with LARGER text"""
         footer = ctk.CTkFrame(self.content_frame, fg_color=("gray15", "gray15"),
-                             height=60)
-        footer.pack(fill="x", side="bottom", padx=10, pady=10)
+                             height=70)  # LARGER HEIGHT
+        footer.pack(fill="x", side="bottom", padx=15, pady=15)
         footer.pack_propagate(False)
         
         # Footer text
         quote = ("Leadership is the ability to facilitate movement in the "
                 "needed direction and have people feel good about it")
         footer_label = ctk.CTkLabel(footer, text=quote,
-                                   font=ctk.CTkFont(size=11, slant="italic"),
+                                   font=ctk.CTkFont(size=13, slant="italic"),  # LARGER FONT
                                    text_color="#ff99aa")
-        footer_label.pack(side="left", padx=20, pady=15)
+        footer_label.pack(side="left", padx=25, pady=20)
         
         # Settings button
         settings_btn = ctk.CTkButton(footer, text="⚙️ Settings",
-                                    width=120,
+                                    width=140,  # LARGER WIDTH
+                                    height=45,  # LARGER HEIGHT
+                                    font=ctk.CTkFont(size=14, weight="bold"),  # LARGER FONT
                                     command=self.settings)
-        settings_btn.pack(side="right", padx=20, pady=15)
+        settings_btn.pack(side="right", padx=25, pady=15)
 
     def darken_color(self, hex_color):
         """Darken a hex color for hover effect"""
@@ -278,11 +340,15 @@ class FaceRecognitionUI:
         return f"#{r:02x}{g:02x}{b:02x}"
 
     def get_real_statistics(self):
-        """
-        Get real-time statistics from file system
-        Returns: dict with all statistics
-        """
-        return self.stats_module.get_all_statistics()
+        """Get real-time statistics from file system"""
+        if self.stats_module:
+            return self.stats_module.get_all_statistics()
+        return {
+            'total_students': 0,
+            'present_today': 0,
+            'photos_collected': 0,
+            'models_trained': 0
+        }
 
     def update_statistics(self):
         """Update statistics display with current data"""
@@ -367,8 +433,8 @@ class FaceRecognitionUI:
         
         if ret:
             try:
-                w = self.root.winfo_width() or 1280
-                h = self.root.winfo_height() or 780
+                w = self.root.winfo_width() or 1400
+                h = self.root.winfo_height() or 900
                 frame = cv2.resize(frame, (w, h))
                 frame = cv2.GaussianBlur(frame, (21, 21), 0)
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -396,16 +462,76 @@ class FaceRecognitionUI:
             try:
                 pygame.mixer.music.play(-1)
                 self.music_playing = True
-                self.music_btn.configure(text="🔊")
+                self.music_btn.configure(text="🔊 Music")
             except:
                 pass
         else:
             try:
                 pygame.mixer.music.stop()
                 self.music_playing = False
-                self.music_btn.configure(text="🎵")
+                self.music_btn.configure(text="🎵 Music")
             except:
                 pass
+
+    def toggle_disha(self):
+        """Toggle DISHA voice assistant"""
+    
+    # Check if dependencies are installed
+        try:
+            import pyttsx3
+            import speech_recognition as sr
+        except ImportError as e:
+            missing_module = str(e).split("'")[1] if "'" in str(e) else "required module"
+        
+            messagebox.showerror("Missing Dependencies",
+                f"DISHA requires additional packages that are not installed.\n\n"
+                f"Missing: {missing_module}\n\n"
+                f"To use DISHA, please install:\n\n"
+                f"pip install pyttsx3\n"
+                f"pip install SpeechRecognition\n"
+                f"pip install pyaudio\n\n"
+                f"Note: pyaudio may require additional setup on Windows.\n"
+                f"If pip install pyaudio fails, try:\n"
+                f"pip install pipwin\n"
+                f"pipwin install pyaudio")
+            return
+    
+    # Try to import DISHA
+        try:
+            from disha_voice_assistant import DISHAIntegration
+        except ImportError:
+            messagebox.showerror("DISHA Not Available",
+                "DISHA voice assistant module not found!\n\n"
+                "Please ensure disha_voice_assistant.py is present.")
+            return
+        except Exception as e:
+            messagebox.showerror("Import Error",
+                f"Failed to import DISHA:\n{str(e)}")
+            return
+    
+    # Toggle DISHA
+        if self.disha is None:
+            try:
+                self.disha = DISHAIntegration(self.root)
+                self.disha.start()
+                self.disha_btn.configure(text="🎤 DISHA ●", fg_color="#27ae60")
+            
+                messagebox.showinfo("DISHA Active", 
+                    "🎤 DISHA is now listening!\n\n"
+                    "Wake word: 'Hey DISHA'\n\n"
+                    "Try saying:\n"
+                    "• Hey DISHA, how many students?\n"
+                    "• Hey DISHA, open student management\n"
+                    "• Hey DISHA, system status\n"
+                    "• Hey DISHA, help")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to start DISHA: {str(e)}")
+                self.disha = None
+        else:
+            self.disha.stop()
+            self.disha = None
+            self.disha_btn.configure(text="🎤 DISHA", fg_color="#9b59b6")
+            messagebox.showinfo("DISHA", "DISHA has been deactivated")
 
     # Module launchers
     def student_details(self):
@@ -461,6 +587,7 @@ FACE RECOGNITION ATTENDANCE SYSTEM - HELP
 • ID card verification support
 • CSV export functionality
 • Comprehensive student management
+• DISHA voice assistant
 
 📁 FILE LOCATIONS:
 • Student Data: student_data/students.csv
@@ -479,6 +606,13 @@ FACE RECOGNITION ATTENDANCE SYSTEM - HELP
 • Train with at least 100 samples per student
 • Adjust confidence threshold for accuracy
 • Enable liveness detection for security
+• Use DISHA for voice commands
+
+🎤 DISHA COMMANDS:
+• "Hey DISHA, how many students?"
+• "Hey DISHA, open student management"
+• "Hey DISHA, system status"
+• "Hey DISHA, help"
 
 📧 SUPPORT:
 Developed by SMIT Students
@@ -487,16 +621,18 @@ For help, contact your system administrator.
         
         help_win = ctk.CTkToplevel(self.root)
         help_win.title("Help Desk")
-        help_win.geometry("700x600")
+        help_win.geometry("750x650")
         help_win.transient(self.root)
         
-        text = ctk.CTkTextbox(help_win, font=ctk.CTkFont(size=11))
+        text = ctk.CTkTextbox(help_win, font=ctk.CTkFont(size=12))
         text.pack(fill="both", expand=True, padx=20, pady=20)
         text.insert("1.0", help_text)
         text.configure(state="disabled")
         
         close_btn = ctk.CTkButton(help_win, text="Close", 
-                                  command=help_win.destroy)
+                                  command=help_win.destroy,
+                                  height=40,
+                                  font=ctk.CTkFont(size=13, weight="bold"))
         close_btn.pack(pady=(0, 20))
 
     def train_data(self):
@@ -545,6 +681,7 @@ For help, contact your system administrator.
 • Real-time Attendance Marking
 • Liveness Detection for Security
 • ID Card Verification Support
+• DISHA Voice Assistant Integration
 
 🛠️ Technologies:
 • Python 3.x
@@ -552,6 +689,8 @@ For help, contact your system administrator.
 • OpenCV (Face Recognition)
 • PIL/Pillow (Image Processing)
 • CSV (Data Storage)
+• pyttsx3 (Voice Assistant)
+• SpeechRecognition (Voice Input)
 
 📊 Features:
 ✓ Student Management System
@@ -563,8 +702,9 @@ For help, contact your system administrator.
 ✓ Automatic Attendance Marking
 ✓ Data Export Functionality
 ✓ Real-time Statistics Dashboard
+✓ DISHA Voice Assistant
 
-🎯 Version: 2.0.0
+🎯 Version: 3.0.0
 📅 Year: 2024-2025
 
 © SMIT - All Rights Reserved
@@ -572,16 +712,18 @@ For help, contact your system administrator.
         
         dev_win = ctk.CTkToplevel(self.root)
         dev_win.title("Developer Information")
-        dev_win.geometry("600x550")
+        dev_win.geometry("650x600")
         dev_win.transient(self.root)
         
-        text = ctk.CTkTextbox(dev_win, font=ctk.CTkFont(size=11))
+        text = ctk.CTkTextbox(dev_win, font=ctk.CTkFont(size=12))
         text.pack(fill="both", expand=True, padx=20, pady=20)
         text.insert("1.0", dev_text)
         text.configure(state="disabled")
         
         close_btn = ctk.CTkButton(dev_win, text="Close",
-                                  command=dev_win.destroy)
+                                  command=dev_win.destroy,
+                                  height=40,
+                                  font=ctk.CTkFont(size=13, weight="bold"))
         close_btn.pack(pady=(0, 20))
 
     def settings(self):
@@ -600,7 +742,8 @@ Feature Status:
 • ID Card Verification: Available  
 • Video Background: """ + ("Enabled" if self.video_enabled else "Disabled") + """
 • Background Music: """ + ("Available" if (PYGAME_AVAILABLE and MUSIC_PATH) else "Not Available") + """
-• Real-time Statistics: Enabled (10s refresh)
+• Real-time Statistics: """ + ("Enabled" if STATS_AVAILABLE else "Disabled") + """
+• DISHA Voice Assistant: """ + ("Available" if DISHA_AVAILABLE else "Not Available") + """
 
 To modify settings:
 1. Face Recognition Module
@@ -616,21 +759,28 @@ To modify settings:
    - View training statistics
    - Model information
 
+4. DISHA Voice Assistant
+   - Click 🎤 DISHA button to activate
+   - Say "Hey DISHA" + command
+   - Voice commands available
+
 Note: Advanced settings can be modified in module code.
         """
         
         settings_win = ctk.CTkToplevel(self.root)
         settings_win.title("Settings")
-        settings_win.geometry("550x450")
+        settings_win.geometry("600x550")
         settings_win.transient(self.root)
         
-        text = ctk.CTkTextbox(settings_win, font=ctk.CTkFont(size=11))
+        text = ctk.CTkTextbox(settings_win, font=ctk.CTkFont(size=12))
         text.pack(fill="both", expand=True, padx=20, pady=20)
         text.insert("1.0", settings_text)
         text.configure(state="disabled")
         
         close_btn = ctk.CTkButton(settings_win, text="Close",
-                                  command=settings_win.destroy)
+                                  command=settings_win.destroy,
+                                  height=40,
+                                  font=ctk.CTkFont(size=13, weight="bold"))
         close_btn.pack(pady=(0, 20))
 
     def exit_app(self):
@@ -641,6 +791,10 @@ Note: Advanced settings can be modified in module code.
     def destroy(self):
         """Cleanup and exit"""
         self.running = False
+        
+        # Stop DISHA
+        if self.disha:
+            self.disha.stop()
         
         try:
             if self.cap:
@@ -667,5 +821,4 @@ Note: Advanced settings can be modified in module code.
 
 if __name__ == "__main__":
     app = FaceRecognitionUI()
-
     app.run()
