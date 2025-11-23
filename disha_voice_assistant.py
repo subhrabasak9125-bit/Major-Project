@@ -1,8 +1,4 @@
-"""
-disha_voice_assistant.py - COMPLETE REWRITE
-DISHA - Digital Intelligent System for Human Assistance
-ALL ISSUES FIXED - Speaks before doing work, proper close functionality
-"""
+
 
 import pyttsx3
 import speech_recognition as sr
@@ -686,4 +682,5 @@ if __name__ == "__main__":
         disha.continuous_listen()
     except KeyboardInterrupt:
         print("\nStopping DISHA...")
+
         disha.stop()
