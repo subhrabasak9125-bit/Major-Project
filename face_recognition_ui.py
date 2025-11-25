@@ -1,4 +1,3 @@
-
 import os
 import tkinter as tk
 from tkinter import messagebox
@@ -18,13 +17,24 @@ try:
     STATS_AVAILABLE = True
 except ImportError:
     STATS_AVAILABLE = False
+    print("Warning: Statistics module not available")
 
-# Import DISHA voice assistant
+# Import DISHA voice assistant (try ultra version first, fallback to regular)
 try:
-    from disha_voice_assistant import DISHAIntegration
+    from disha_voice_assistant import UltraDISHAIntegration as DISHAIntegration
     DISHA_AVAILABLE = True
+    DISHA_VERSION = "ULTRA"
+    print("Ultra DISHA loaded successfully!")
 except ImportError:
-    DISHA_AVAILABLE = False
+    try:
+        from disha_voice_assistant import DISHAIntegration
+        DISHA_AVAILABLE = True
+        DISHA_VERSION = "STANDARD"
+        print("Standard DISHA loaded successfully!")
+    except ImportError:
+        DISHA_AVAILABLE = False
+        DISHA_VERSION = None
+        print("Warning: DISHA voice assistant not available")
 
 # Optional pygame for sound
 try:
@@ -34,8 +44,9 @@ except ImportError:
     PYGAME_AVAILABLE = False
 
 # Configuration
-VIDEO_PATH = "WhatsApp Video 2025-11-17 at 23.41.36_2c9c66ab.mp4"  # Optional
-MUSIC_PATH = None  # Optional background music path
+VIDEO_PATH = "WhatsApp Video 2025-11-17 at 23.41.36_2c9c66ab.mp4"
+MUSIC_PATH = None
+
 
 class FaceRecognitionUI:
     def __init__(self, root=None):
@@ -45,23 +56,21 @@ class FaceRecognitionUI:
 
         self.root = root or ctk.CTk()
         self.root.title("SMIT Face Recognition Attendance System")
-        self.root.geometry("1400x900")  # LARGER WINDOW
+        self.root.geometry("1400x900")
         
         try:
             self.root.state("zoomed")
         except:
             pass
 
-        # Initialize statistics module
-        if STATS_AVAILABLE:
-            self.stats_module = RealTimeStatistics()
-        else:
-            self.stats_module = None
+        # Initialize statistics
+        self.stats_module = RealTimeStatistics() if STATS_AVAILABLE else None
 
         # Initialize DISHA
         self.disha = None
+        self.disha_active = False
 
-        # Optional video capture for background
+        # Video background
         self.cap = None
         self.video_enabled = False
         if os.path.exists(VIDEO_PATH):
@@ -71,9 +80,8 @@ class FaceRecognitionUI:
             except:
                 pass
 
-        # Optional music
+        # Music
         self.music_playing = False
-        self.muted = False
         if PYGAME_AVAILABLE and MUSIC_PATH and os.path.exists(MUSIC_PATH):
             try:
                 pygame.mixer.init()
@@ -92,11 +100,9 @@ class FaceRecognitionUI:
             self.update_video()
         self.update_clock()
         
-        # Start statistics auto-update
         if self.stats_module:
             self.root.after(2000, self.schedule_stats_update)
         
-        # Start music if available
         if PYGAME_AVAILABLE and MUSIC_PATH and os.path.exists(MUSIC_PATH):
             try:
                 pygame.mixer.music.play(-1)
@@ -105,19 +111,19 @@ class FaceRecognitionUI:
                 pass
 
     def build_ui(self):
-        """Build the main UI structure with LARGER elements"""
+        """Build the main UI structure"""
         
         # Main container
         self.main_frame = ctk.CTkFrame(self.root, fg_color="#0a0a2e")
         self.main_frame.pack(fill="both", expand=True)
         
-        # If video is enabled, create canvas for background
+        # Video background canvas
         if self.video_enabled:
             self.video_canvas = tk.Canvas(self.main_frame, bg="#0a0a2e", 
                                          highlightthickness=0)
             self.video_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
         
-        # Content frame (on top of video if enabled)
+        # Content frame
         self.content_frame = ctk.CTkFrame(self.main_frame, 
                                          fg_color=("gray10", "gray10"))
         self.content_frame.place(relx=0.02, rely=0.02, relwidth=0.96, relheight=0.96)
@@ -128,90 +134,149 @@ class FaceRecognitionUI:
         self.build_function_grid()
         self.build_footer()
         
+        # Add floating DISHA button
+        self.add_floating_disha()
+        
     def build_header(self):
-        """Build header with LARGER title and controls"""
+        """Build header with title and controls"""
         header = ctk.CTkFrame(self.content_frame, fg_color=("gray15", "gray15"), 
-                             height=100)  # LARGER HEIGHT
+                             height=100)
         header.pack(fill="x", padx=15, pady=15)
         header.pack_propagate(False)
         
-        # Left side - Title
+        # Title section
         title_frame = ctk.CTkFrame(header, fg_color="transparent")
         title_frame.pack(side="left", fill="both", expand=True, padx=20)
         
-        # Title
+        # Title with DISHA version indicator
+        disha_indicator = f" | DISHA {DISHA_VERSION}" if DISHA_VERSION else ""
         title = ctk.CTkLabel(title_frame, 
-                            text="🎓 SMIT FACE RECOGNITION ATTENDANCE SYSTEM",
-                            font=ctk.CTkFont(size=26, weight="bold"),  # LARGER FONT
+                            text=f"SMIT FACE RECOGNITION ATTENDANCE SYSTEM{disha_indicator}",
+                            font=ctk.CTkFont(size=26, weight="bold"),
                             text_color="#00d9ff")
         title.pack(anchor="w", pady=(10, 0))
         
-        # Subtitle
+        subtitle_text = "Smart Attendance | AI-Powered"
+        if DISHA_VERSION == "ULTRA":
+            subtitle_text += " | DISHA Ultra Voice Assistant"
+        elif DISHA_VERSION == "STANDARD":
+            subtitle_text += " | DISHA Voice Assistant"
+        
         subtitle = ctk.CTkLabel(title_frame, 
-                               text="Smart Attendance • Powered by AI • With DISHA Voice Assistant",
-                               font=ctk.CTkFont(size=13),  # LARGER FONT
+                               text=subtitle_text,
+                               font=ctk.CTkFont(size=13),
                                text_color="gray70")
         subtitle.pack(anchor="w", pady=(5, 0))
         
-        # Right side - Controls
+        # Controls frame
         controls_frame = ctk.CTkFrame(header, fg_color="transparent")
         controls_frame.pack(side="right", padx=20)
         
-        # Row 1 - Clock
+        # Clock
         self.clock_label = ctk.CTkLabel(controls_frame, text="", 
-                                       font=ctk.CTkFont(size=16, weight="bold"),  # LARGER FONT
+                                       font=ctk.CTkFont(size=16, weight="bold"),
                                        text_color="#00d9ff")
-        self.clock_label.grid(row=0, column=0, columnspan=3, pady=(5, 10))
-        
-        # Row 2 - Buttons (MUCH LARGER)
-        # DISHA button - ALWAYS VISIBLE
-        self.disha_btn = ctk.CTkButton(controls_frame, 
-                                      text="🎤 DISHA", 
-                                      width=140,      # LARGER WIDTH
-                                      height=50,      # LARGER HEIGHT
-                                      command=self.toggle_disha,
-                                      fg_color="#9b59b6",
-                                      hover_color="#8e44ad",
-                                      font=ctk.CTkFont(size=16, weight="bold"),  # LARGER FONT
-                                      corner_radius=10)
-        self.disha_btn.grid(row=1, column=0, padx=5, pady=5)
+        self.clock_label.grid(row=0, column=0, columnspan=2, pady=(5, 10))
         
         # Refresh button
         refresh_btn = ctk.CTkButton(controls_frame, 
-                                   text="🔄 Refresh", 
-                                   width=140,       # LARGER WIDTH
-                                   height=50,       # LARGER HEIGHT
+                                   text="Refresh", 
+                                   width=140,
+                                   height=50,
                                    command=self.refresh_statistics_manual,
                                    fg_color="#2ecc71",
                                    hover_color="#27ae60",
-                                   font=ctk.CTkFont(size=16, weight="bold"),  # LARGER FONT
+                                   font=ctk.CTkFont(size=16, weight="bold"),
                                    corner_radius=10)
-        refresh_btn.grid(row=1, column=1, padx=5, pady=5)
+        refresh_btn.grid(row=1, column=0, padx=5, pady=5)
         
-        # Music controls (if available)
+        # Music button
         if PYGAME_AVAILABLE and MUSIC_PATH:
             self.music_btn = ctk.CTkButton(controls_frame, 
-                                          text="🎵 Music", 
-                                          width=140,    # LARGER WIDTH
-                                          height=50,    # LARGER HEIGHT
+                                          text="Music", 
+                                          width=140,
+                                          height=50,
                                           command=self.toggle_music,
-                                          font=ctk.CTkFont(size=16, weight="bold"),  # LARGER FONT
+                                          font=ctk.CTkFont(size=16, weight="bold"),
                                           corner_radius=10)
-            self.music_btn.grid(row=1, column=2, padx=5, pady=5)
+            self.music_btn.grid(row=1, column=1, padx=5, pady=5)
+
+    def add_floating_disha(self):
+        """Add floating DISHA button in bottom-right corner"""
+        if not DISHA_AVAILABLE:
+            return
+        
+        # Floating button container
+        float_container = ctk.CTkFrame(self.content_frame, 
+                                       fg_color="transparent")
+        float_container.place(relx=0.95, rely=0.88, anchor="center")
+        
+        # DISHA button text based on version
+        disha_text = "DISHA\nULTRA" if DISHA_VERSION == "ULTRA" else "DISHA"
+        
+        # DISHA button with glow effect
+        self.disha_float_btn = ctk.CTkButton(
+            float_container,
+            text=disha_text,
+            width=90,
+            height=90,
+            corner_radius=45,
+            fg_color=("#9b59b6", "#8e44ad"),
+            hover_color="#7d3c98",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            command=self.toggle_disha,
+            border_width=3,
+            border_color="#bb87dd"
+        )
+        self.disha_float_btn.pack()
+        
+        # Status label
+        status_text = "Click to activate" if DISHA_VERSION else "Not available"
+        self.disha_status_label = ctk.CTkLabel(
+            float_container,
+            text=status_text,
+            font=ctk.CTkFont(size=10),
+            text_color="gray60"
+        )
+        self.disha_status_label.pack(pady=(5, 0))
+        
+        # Start pulsing animation
+        self.pulse_disha()
+    
+    def pulse_disha(self):
+        """Create pulsing animation for DISHA button"""
+        if not hasattr(self, 'disha_float_btn'):
+            return
+        
+        try:
+            if self.disha_active:
+                # Active: green pulse
+                colors = ["#27ae60", "#2ecc71"]
+            else:
+                # Inactive: purple pulse
+                colors = ["#9b59b6", "#8e44ad"]
+            
+            current = self.disha_float_btn.cget("fg_color")
+            new_color = colors[1] if current == colors[0] else colors[0]
+            self.disha_float_btn.configure(fg_color=new_color)
+        except:
+            pass
+        
+        if self.running:
+            self.root.after(1000, self.pulse_disha)
 
     def build_stats_cards(self):
-        """Build statistics cards with LARGER text"""
+        """Build statistics cards"""
         stats_container = ctk.CTkFrame(self.content_frame, 
                                       fg_color=("gray12", "gray12"),
-                                      height=140)  # LARGER HEIGHT
+                                      height=140)
         stats_container.pack(fill="x", padx=15, pady=(0, 15))
         stats_container.pack_propagate(False)
         
-        # Configure grid
         for i in range(4):
             stats_container.columnconfigure(i, weight=1, uniform="stat")
         
-        # Get REAL statistics
+        # Get statistics
         if self.stats_module:
             real_stats = self.get_real_statistics()
         else:
@@ -222,52 +287,45 @@ class FaceRecognitionUI:
                 'models_trained': 0
             }
         
-        # Stats data with real values
         stats = [
-            ("📚 Total Students", real_stats['total_students'], "#3498db"),
-            ("✅ Present Today", real_stats['present_today'], "#2ecc71"),
-            ("📸 Photos Collected", real_stats['photos_collected'], "#9b59b6"),
-            ("🧠 Models Trained", real_stats['models_trained'], "#f39c12")
+            ("Total Students", real_stats['total_students'], "#3498db"),
+            ("Present Today", real_stats['present_today'], "#2ecc71"),
+            ("Photos Collected", real_stats['photos_collected'], "#9b59b6"),
+            ("Models Trained", real_stats['models_trained'], "#f39c12")
         ]
         
-        # Store label references for updates
         self.stat_labels = []
         self.stat_values = {}
         
         for i, (label, value, color) in enumerate(stats):
             card = ctk.CTkFrame(stats_container, fg_color=("gray14", "gray14"),
-                               corner_radius=15)  # LARGER CORNER RADIUS
+                               corner_radius=15, border_width=3, border_color=color)
             card.grid(row=0, column=i, padx=10, pady=15, sticky="nsew")
             
-            # Icon/Title
             title_label = ctk.CTkLabel(card, text=label,
-                                      font=ctk.CTkFont(size=15, weight="bold"),  # LARGER FONT
+                                      font=ctk.CTkFont(size=15, weight="bold"),
                                       text_color="gray80")
             title_label.pack(pady=(20, 10))
             
-            # Value
             value_label = ctk.CTkLabel(card, text=str(value),
-                                      font=ctk.CTkFont(size=36, weight="bold"),  # LARGER FONT
+                                      font=ctk.CTkFont(size=36, weight="bold"),
                                       text_color=color)
             value_label.pack(pady=(0, 20))
             
-            # Store reference for updates
             self.stat_labels.append(value_label)
             self.stat_values[label] = value
 
     def build_function_grid(self):
-        """Build main function buttons grid with LARGER buttons"""
+        """Build main function buttons grid"""
         grid_container = ctk.CTkFrame(self.content_frame, 
                                      fg_color=("gray12", "gray12"))
         grid_container.pack(fill="both", expand=True, padx=15, pady=(0, 15))
         
-        # Configure grid - 4 columns x 2 rows
         for i in range(4):
             grid_container.columnconfigure(i, weight=1, uniform="btn")
         for i in range(2):
             grid_container.rowconfigure(i, weight=1, uniform="btn")
         
-        # Button data
         buttons = [
             ("STUDENT DETAILS", "👥", self.student_details, "#3498db"),
             ("FACE RECOGNITION", "🔍", self.face_recognition, "#2ecc71"),
@@ -283,54 +341,121 @@ class FaceRecognitionUI:
             row = idx // 4
             col = idx % 4
             
-            # Card frame
             card = ctk.CTkFrame(grid_container, fg_color=("gray14", "gray14"),
-                               corner_radius=15)  # LARGER CORNER RADIUS
+                               corner_radius=15)
             card.grid(row=row, column=col, padx=12, pady=12, sticky="nsew")
             
-            # Icon
             icon_label = ctk.CTkLabel(card, text=icon, 
-                                     font=ctk.CTkFont(size=48))  # LARGER ICON
+                                     font=ctk.CTkFont(size=48))
             icon_label.pack(pady=(25, 10))
             
-            # Text
             text_label = ctk.CTkLabel(card, text=text,
-                                     font=ctk.CTkFont(size=16, weight="bold"),  # LARGER FONT
+                                     font=ctk.CTkFont(size=16, weight="bold"),
                                      text_color="gray90")
             text_label.pack(pady=(0, 15))
             
-            # Button
             btn = ctk.CTkButton(card, text="Open", 
                                command=command,
                                fg_color=color,
                                hover_color=self.darken_color(color),
                                corner_radius=10,
-                               height=45,  # LARGER HEIGHT
-                               font=ctk.CTkFont(size=14, weight="bold"))  # LARGER FONT
+                               height=45,
+                               font=ctk.CTkFont(size=14, weight="bold"))
             btn.pack(pady=(0, 25), padx=25, fill="x")
 
     def build_footer(self):
-        """Build footer with LARGER text"""
+        """Build footer"""
         footer = ctk.CTkFrame(self.content_frame, fg_color=("gray15", "gray15"),
-                             height=70)  # LARGER HEIGHT
+                             height=70)
         footer.pack(fill="x", side="bottom", padx=15, pady=15)
         footer.pack_propagate(False)
         
-        # Footer text
         quote = ("Leadership is the ability to facilitate movement in the "
                 "needed direction and have people feel good about it")
         footer_label = ctk.CTkLabel(footer, text=quote,
-                                   font=ctk.CTkFont(size=13, slant="italic"),  # LARGER FONT
+                                   font=ctk.CTkFont(size=13, slant="italic"),
                                    text_color="#ff99aa")
         footer_label.pack(side="left", padx=25, pady=20)
         
-        # Settings button
-        settings_btn = ctk.CTkButton(footer, text="⚙️ Settings",
-                                    width=140,  # LARGER WIDTH
-                                    height=45,  # LARGER HEIGHT
-                                    font=ctk.CTkFont(size=14, weight="bold"),  # LARGER FONT
+        settings_btn = ctk.CTkButton(footer, text="Settings",
+                                    width=140,
+                                    height=45,
+                                    font=ctk.CTkFont(size=14, weight="bold"),
                                     command=self.settings)
         settings_btn.pack(side="right", padx=25, pady=15)
+
+    def toggle_disha(self):
+        """Toggle DISHA voice assistant"""
+        if not DISHA_AVAILABLE:
+            messagebox.showerror("DISHA Not Available",
+                "DISHA voice assistant is not available!\n\n"
+                "Required packages:\n"
+                "- pip install pyttsx3\n"
+                "- pip install SpeechRecognition\n"
+                "- pip install pyaudio")
+            return
+        
+        if not self.disha_active:
+            try:
+                # Start DISHA with female voice (auto-detect or use index 1 for Windows Zira)
+                self.disha = DISHAIntegration(self.root, preferred_voice_index=1)  # Force female voice
+                self.disha.start()
+                self.disha_active = True
+                
+                # Update UI
+                self.disha_float_btn.configure(
+                    fg_color="#27ae60",
+                    border_color="#58d68d"
+                )
+                self.disha_status_label.configure(
+                    text="ACTIVE",
+                    text_color="#2ecc71"
+                )
+                
+                disha_info = "DISHA is now listening!\n\nWake word: 'Hey DISHA'\n\n"
+                if DISHA_VERSION == "ULTRA":
+                    disha_info += "ULTRA VERSION - Natural language supported!\n\n"
+                    disha_info += "Try saying naturally:\n"
+                    disha_info += "- 'Hey DISHA, how many students do we have?'\n"
+                    disha_info += "- 'DISHA, who's absent today?'\n"
+                    disha_info += "- 'Yo DISHA, what's the attendance trend?'\n"
+                    disha_info += "- 'Hey DISHA, open student management'\n"
+                    disha_info += "- 'DISHA, how's the system doing?'"
+                else:
+                    disha_info += "Try saying:\n"
+                    disha_info += "- 'Hey DISHA, how many students?'\n"
+                    disha_info += "- 'Hey DISHA, open student management'\n"
+                    disha_info += "- 'Hey DISHA, system status'\n"
+                    disha_info += "- 'Hey DISHA, help'"
+                
+                messagebox.showinfo("DISHA Active", disha_info)
+                    
+            except Exception as e:
+                messagebox.showerror("DISHA Error", 
+                                   f"Failed to start DISHA:\n{str(e)}")
+                self.disha_active = False
+        else:
+            try:
+                # Stop DISHA
+                if self.disha:
+                    self.disha.stop()
+                    self.disha = None
+                self.disha_active = False
+                
+                # Update UI
+                self.disha_float_btn.configure(
+                    fg_color="#9b59b6",
+                    border_color="#bb87dd"
+                )
+                self.disha_status_label.configure(
+                    text="Click to activate",
+                    text_color="gray60"
+                )
+                
+                messagebox.showinfo("DISHA", "DISHA has been deactivated")
+            except Exception as e:
+                messagebox.showerror("DISHA Error", 
+                                   f"Failed to stop DISHA:\n{str(e)}")
 
     def darken_color(self, hex_color):
         """Darken a hex color for hover effect"""
@@ -340,7 +465,7 @@ class FaceRecognitionUI:
         return f"#{r:02x}{g:02x}{b:02x}"
 
     def get_real_statistics(self):
-        """Get real-time statistics from file system"""
+        """Get real-time statistics"""
         if self.stats_module:
             return self.stats_module.get_all_statistics()
         return {
@@ -351,32 +476,25 @@ class FaceRecognitionUI:
         }
 
     def update_statistics(self):
-        """Update statistics display with current data"""
+        """Update statistics display"""
         if not hasattr(self, 'stat_labels') or not self.stat_labels:
             return
         
         try:
-            # Get fresh statistics
             new_stats = self.get_real_statistics()
             
-            # Stats configuration
             stats_config = [
-                ("📚 Total Students", new_stats['total_students'], "#3498db"),
-                ("✅ Present Today", new_stats['present_today'], "#2ecc71"),
-                ("📸 Photos Collected", new_stats['photos_collected'], "#9b59b6"),
-                ("🧠 Models Trained", new_stats['models_trained'], "#f39c12")
+                ("Total Students", new_stats['total_students'], "#3498db"),
+                ("Present Today", new_stats['present_today'], "#2ecc71"),
+                ("Photos Collected", new_stats['photos_collected'], "#9b59b6"),
+                ("Models Trained", new_stats['models_trained'], "#f39c12")
             ]
             
-            # Update each stat card
             for i, (label, value, color) in enumerate(stats_config):
                 if i < len(self.stat_labels):
-                    # Get old value for comparison
                     old_value = self.stat_values.get(label, 0)
-                    
-                    # Update display
                     self.stat_labels[i].configure(text=str(value))
                     
-                    # Flash effect if value changed
                     if old_value != value:
                         self.stat_values[label] = value
                         self.stat_labels[i].configure(text_color="white")
@@ -387,7 +505,7 @@ class FaceRecognitionUI:
             print(f"Error updating statistics: {e}")
 
     def schedule_stats_update(self):
-        """Schedule automatic statistics updates every 10 seconds"""
+        """Schedule automatic statistics updates"""
         if not self.running:
             return
         
@@ -396,21 +514,20 @@ class FaceRecognitionUI:
         except:
             pass
         
-        # Schedule next update (10 seconds)
         self.root.after(10000, self.schedule_stats_update)
 
     def refresh_statistics_manual(self):
-        """Manual refresh triggered by button"""
+        """Manual refresh"""
         self.update_statistics()
         try:
             messagebox.showinfo("Statistics Refreshed", 
-                               "All statistics have been updated with current data!")
+                               "All statistics have been updated!")
         except:
             pass
 
     def update_clock(self):
         """Update clock display"""
-        now = datetime.now().strftime("%I:%M:%S %p • %d %B %Y")
+        now = datetime.now().strftime("%I:%M:%S %p | %d %B %Y")
         try:
             self.clock_label.configure(text=now)
         except:
@@ -462,193 +579,114 @@ class FaceRecognitionUI:
             try:
                 pygame.mixer.music.play(-1)
                 self.music_playing = True
-                self.music_btn.configure(text="🔊 Music")
+                self.music_btn.configure(text="Music ON")
             except:
                 pass
         else:
             try:
                 pygame.mixer.music.stop()
                 self.music_playing = False
-                self.music_btn.configure(text="🎵 Music")
+                self.music_btn.configure(text="Music")
             except:
                 pass
 
-    def toggle_disha(self):
-        """Toggle DISHA voice assistant"""
-    
-    # Check if dependencies are installed
-        try:
-            import pyttsx3
-            import speech_recognition as sr
-        except ImportError as e:
-            missing_module = str(e).split("'")[1] if "'" in str(e) else "required module"
-        
-            messagebox.showerror("Missing Dependencies",
-                f"DISHA requires additional packages that are not installed.\n\n"
-                f"Missing: {missing_module}\n\n"
-                f"To use DISHA, please install:\n\n"
-                f"pip install pyttsx3\n"
-                f"pip install SpeechRecognition\n"
-                f"pip install pyaudio\n\n"
-                f"Note: pyaudio may require additional setup on Windows.\n"
-                f"If pip install pyaudio fails, try:\n"
-                f"pip install pipwin\n"
-                f"pipwin install pyaudio")
-            return
-    
-    # Try to import DISHA
-        try:
-            from disha_voice_assistant import DISHAIntegration
-        except ImportError:
-            messagebox.showerror("DISHA Not Available",
-                "DISHA voice assistant module not found!\n\n"
-                "Please ensure disha_voice_assistant.py is present.")
-            return
-        except Exception as e:
-            messagebox.showerror("Import Error",
-                f"Failed to import DISHA:\n{str(e)}")
-            return
-    
-    # Toggle DISHA
-        if self.disha is None:
-            try:
-                self.disha = DISHAIntegration(self.root)
-                self.disha.start()
-                self.disha_btn.configure(text="🎤 DISHA ●", fg_color="#27ae60")
-            
-                messagebox.showinfo("DISHA Active", 
-                    "🎤 DISHA is now listening!\n\n"
-                    "Wake word: 'Hey DISHA'\n\n"
-                    "Try saying:\n"
-                    "• Hey DISHA, how many students?\n"
-                    "• Hey DISHA, open student management\n"
-                    "• Hey DISHA, system status\n"
-                    "• Hey DISHA, help")
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to start DISHA: {str(e)}")
-                self.disha = None
-        else:
-            self.disha.stop()
-            self.disha = None
-            self.disha_btn.configure(text="🎤 DISHA", fg_color="#9b59b6")
-            messagebox.showinfo("DISHA", "DISHA has been deactivated")
-
     # Module launchers
     def student_details(self):
-        """Open Student Management"""
         try:
             from student_management import UpdatedStudentManagement
             UpdatedStudentManagement(self.root)
         except ImportError:
             messagebox.showerror("Error", 
-                "Student management module not found!\n"
-                "Ensure student_management.py is present.")
+                "Student management module not found!")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open: {str(e)}")
 
     def face_recognition(self):
-        """Open Face Recognition"""
         try:
             from face_recognition_module import FaceRecognitionModule
             FaceRecognitionModule(self.root)
         except ImportError:
             messagebox.showerror("Error",
-                "Face recognition module not found!\n"
-                "Ensure face_recognition_module.py is present.")
+                "Face recognition module not found!")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open: {str(e)}")
 
     def attendance(self):
-        """View Attendance"""
         try:
             from attendance_viewer import AttendanceViewer
             AttendanceViewer(self.root)
         except ImportError:
             messagebox.showinfo("Attendance",
-                "Attendance viewer not found.\n"
-                "Check the 'attendance' folder for CSV files.")
+                "Attendance viewer not found.")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open: {str(e)}")
 
     def help_desk(self):
-        """Show Help"""
         help_text = """
 FACE RECOGNITION ATTENDANCE SYSTEM - HELP
 
-📋 WORKFLOW:
-1. Student Details → Add student information
-2. Photos → Capture 100+ photo samples  
-3. Train Data → Train the AI model
-4. Face Recognition → Start attendance marking
+WORKFLOW:
+1. Student Details -> Add student information
+2. Photos -> Capture 100+ photo samples  
+3. Train Data -> Train the AI model
+4. Face Recognition -> Start attendance marking
 
-🎯 FEATURES:
-• Automatic face detection and recognition
-• Real-time attendance marking with liveness detection
-• ID card verification support
-• CSV export functionality
-• Comprehensive student management
-• DISHA voice assistant
+FEATURES:
+- Automatic face detection and recognition
+- Real-time attendance marking
+- CSV export functionality
+- DISHA voice assistant
 
-📁 FILE LOCATIONS:
-• Student Data: student_data/students.csv
-• Photo Samples: data/ folder
-• Trained Model: trainer/trainer.yml
-• Attendance: attendance/ folder
+FILE LOCATIONS:
+- Student Data: student_data/students.csv
+- Photo Samples: data/ folder
+- Trained Model: trainer/trainer.yml
+- Attendance: attendance/ folder
 
-⚙️ REQUIREMENTS:
-• Python 3.7+
-• OpenCV with contrib modules
-• Working webcam
-• Good lighting conditions
+REQUIREMENTS:
+- Python 3.7+
+- OpenCV with contrib modules
+- Working webcam
 
-💡 TIPS:
-• Capture photos in good lighting
-• Train with at least 100 samples per student
-• Adjust confidence threshold for accuracy
-• Enable liveness detection for security
-• Use DISHA for voice commands
+TIPS:
+- Capture photos in good lighting
+- Train with at least 100 samples per student
+- Use DISHA for voice commands
 
-🎤 DISHA COMMANDS:
-• "Hey DISHA, how many students?"
-• "Hey DISHA, open student management"
-• "Hey DISHA, system status"
-• "Hey DISHA, help"
-
-📧 SUPPORT:
+DISHA COMMANDS:
+"""
+        if DISHA_VERSION == "ULTRA":
+            help_text += """
+ULTRA VERSION - Natural Language:
+- "Hey DISHA, how many students do we have?"
+- "Yo DISHA, who's absent today?"
+- "DISHA, what's the attendance trend?"
+- "Hey DISHA, find student named John"
+"""
+        else:
+            help_text += """
+- "Hey DISHA, how many students?"
+- "Hey DISHA, open student management"
+- "Hey DISHA, system status"
+"""
+        
+        help_text += """
+SUPPORT:
 Developed by SMIT Students
-For help, contact your system administrator.
         """
-        
-        help_win = ctk.CTkToplevel(self.root)
-        help_win.title("Help Desk")
-        help_win.geometry("750x650")
-        help_win.transient(self.root)
-        
-        text = ctk.CTkTextbox(help_win, font=ctk.CTkFont(size=12))
-        text.pack(fill="both", expand=True, padx=20, pady=20)
-        text.insert("1.0", help_text)
-        text.configure(state="disabled")
-        
-        close_btn = ctk.CTkButton(help_win, text="Close", 
-                                  command=help_win.destroy,
-                                  height=40,
-                                  font=ctk.CTkFont(size=13, weight="bold"))
-        close_btn.pack(pady=(0, 20))
+        self.show_message("Help Desk", help_text)
 
     def train_data(self):
-        """Open Training Module"""
         try:
             from train_data_module import TrainDataModule
             TrainDataModule(self.root)
         except ImportError:
             messagebox.showerror("Error",
-                "Train data module not found!\n"
-                "Ensure train_data_module.py is present.")
+                "Train data module not found!")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open: {str(e)}")
 
     def photos(self):
-        """Photo Management"""
         msg = messagebox.askyesno("Photo Management",
             "To capture photos:\n\n"
             "1. Go to 'Student Details'\n"
@@ -663,138 +701,105 @@ For help, contact your system administrator.
                                   student_name="Test Student")
             except ImportError:
                 messagebox.showerror("Error",
-                    "Photo capture module not found!\n"
-                    "Ensure photo_capture_module.py is present.")
+                    "Photo capture module not found!")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to open: {str(e)}")
 
     def developer(self):
-        """Show Developer Info"""
-        dev_text = """
-🎓 FACE RECOGNITION ATTENDANCE SYSTEM
+        dev_text = f"""
+FACE RECOGNITION ATTENDANCE SYSTEM
 
-👨‍💻 Developed By: SMIT Students
+Developed By: SMIT Students
 
-📚 Project Details:
-• Academic Project for Smart Attendance
-• Face Recognition using OpenCV & LBPH
-• Real-time Attendance Marking
-• Liveness Detection for Security
-• ID Card Verification Support
-• DISHA Voice Assistant Integration
+Project Details:
+- Academic Project for Smart Attendance
+- Face Recognition using OpenCV & LBPH
+- Real-time Attendance Marking
+- DISHA Voice Assistant Integration ({DISHA_VERSION if DISHA_VERSION else "Not Available"})
 
-🛠️ Technologies:
-• Python 3.x
-• CustomTkinter (Modern UI)
-• OpenCV (Face Recognition)
-• PIL/Pillow (Image Processing)
-• CSV (Data Storage)
-• pyttsx3 (Voice Assistant)
-• SpeechRecognition (Voice Input)
+Technologies:
+- Python 3.x
+- CustomTkinter (Modern UI)
+- OpenCV (Face Recognition)
+- PIL/Pillow (Image Processing)
+- CSV (Data Storage)
 
-📊 Features:
+Features:
 ✓ Student Management System
 ✓ Photo Sample Collection
 ✓ AI Model Training
 ✓ Real-time Face Recognition
-✓ Liveness Detection (Anti-Spoofing)
-✓ ID Card Verification
 ✓ Automatic Attendance Marking
 ✓ Data Export Functionality
 ✓ Real-time Statistics Dashboard
-✓ DISHA Voice Assistant
+✓ {DISHA_VERSION if DISHA_VERSION else "Standard"} DISHA Voice Assistant
 
-🎯 Version: 3.0.0
-📅 Year: 2024-2025
+Version: 3.0.0
+Year: 2024-2025
 
 © SMIT - All Rights Reserved
         """
-        
-        dev_win = ctk.CTkToplevel(self.root)
-        dev_win.title("Developer Information")
-        dev_win.geometry("650x600")
-        dev_win.transient(self.root)
-        
-        text = ctk.CTkTextbox(dev_win, font=ctk.CTkFont(size=12))
-        text.pack(fill="both", expand=True, padx=20, pady=20)
-        text.insert("1.0", dev_text)
-        text.configure(state="disabled")
-        
-        close_btn = ctk.CTkButton(dev_win, text="Close",
-                                  command=dev_win.destroy,
-                                  height=40,
-                                  font=ctk.CTkFont(size=13, weight="bold"))
-        close_btn.pack(pady=(0, 20))
+        self.show_message("Developer Information", dev_text)
 
     def settings(self):
-        """Show Settings"""
-        settings_text = """
-⚙️ SYSTEM SETTINGS
+        settings_text = f"""
+SYSTEM SETTINGS
 
 Current Configuration:
-• Camera Index: 0 (Default)
-• Confidence Threshold: 50%
-• Max Photo Samples: 100
-• Recognition Algorithm: LBPH
+- Camera Index: 0 (Default)
+- Confidence Threshold: 50%
+- Max Photo Samples: 100
+- Recognition Algorithm: LBPH
 
 Feature Status:
-• Liveness Detection: Available
-• ID Card Verification: Available  
-• Video Background: """ + ("Enabled" if self.video_enabled else "Disabled") + """
-• Background Music: """ + ("Available" if (PYGAME_AVAILABLE and MUSIC_PATH) else "Not Available") + """
-• Real-time Statistics: """ + ("Enabled" if STATS_AVAILABLE else "Disabled") + """
-• DISHA Voice Assistant: """ + ("Available" if DISHA_AVAILABLE else "Not Available") + """
+- Video Background: {"Enabled" if self.video_enabled else "Disabled"}
+- Background Music: {"Available" if (PYGAME_AVAILABLE and MUSIC_PATH) else "Not Available"}
+- Real-time Statistics: {"Enabled" if STATS_AVAILABLE else "Disabled"}
+- DISHA Voice Assistant: {DISHA_VERSION if DISHA_VERSION else "Not Available"}
 
-To modify settings:
-1. Face Recognition Module
-   - Adjust confidence threshold
-   - Toggle liveness detection
-   - Toggle ID verification
-
-2. Photo Capture Module
-   - Set sample count (50-200)
-   - Camera selection
-
-3. Train Data Module
-   - View training statistics
-   - Model information
-
-4. DISHA Voice Assistant
-   - Click 🎤 DISHA button to activate
-   - Say "Hey DISHA" + command
-   - Voice commands available
-
-Note: Advanced settings can be modified in module code.
-        """
+DISHA Voice Assistant:
+- Click floating DISHA button to activate
+"""
+        if DISHA_VERSION == "ULTRA":
+            settings_text += "- ULTRA VERSION: Natural language supported\n"
+            settings_text += "- Just speak naturally - no exact commands needed\n"
+        else:
+            settings_text += "- Say 'Hey DISHA' + command\n"
         
-        settings_win = ctk.CTkToplevel(self.root)
-        settings_win.title("Settings")
-        settings_win.geometry("600x550")
-        settings_win.transient(self.root)
+        settings_text += "- Voice commands available for all operations"
         
-        text = ctk.CTkTextbox(settings_win, font=ctk.CTkFont(size=12))
-        text.pack(fill="both", expand=True, padx=20, pady=20)
-        text.insert("1.0", settings_text)
+        self.show_message("Settings", settings_text)
+
+    def show_message(self, title, message):
+        msg_win = ctk.CTkToplevel(self.root)
+        msg_win.title(title)
+        msg_win.geometry("750x650")
+        msg_win.transient(self.root)
+        
+        text = ctk.CTkTextbox(msg_win, font=ctk.CTkFont(size=12))
+        text.pack(fill="both", expand=True, padx=25, pady=25)
+        text.insert("1.0", message)
         text.configure(state="disabled")
         
-        close_btn = ctk.CTkButton(settings_win, text="Close",
-                                  command=settings_win.destroy,
-                                  height=40,
-                                  font=ctk.CTkFont(size=13, weight="bold"))
-        close_btn.pack(pady=(0, 20))
+        close_btn = ctk.CTkButton(msg_win, text="Close", 
+                                  command=msg_win.destroy,
+                                  height=50,
+                                  width=180,
+                                  font=ctk.CTkFont(size=15, weight="bold"))
+        close_btn.pack(pady=(0, 25))
 
     def exit_app(self):
-        """Exit application"""
         if messagebox.askyesno("Exit", "Are you sure you want to exit?"):
             self.destroy()
 
     def destroy(self):
-        """Cleanup and exit"""
         self.running = False
         
-        # Stop DISHA
         if self.disha:
-            self.disha.stop()
+            try:
+                self.disha.stop()
+            except:
+                pass
         
         try:
             if self.cap:
@@ -815,7 +820,6 @@ Note: Advanced settings can be modified in module code.
             pass
 
     def run(self):
-        """Start the application"""
         self.root.mainloop()
 
 
