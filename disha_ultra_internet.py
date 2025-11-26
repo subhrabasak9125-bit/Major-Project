@@ -1,8 +1,3 @@
-"""
-disha_ultra_complete.py - ULTIMATE AI ASSISTANT
-Complete System Control | Internet Access | Natural Language | Female Voice
-REVOLUTIONARY AI-POWERED ASSISTANT FOR FACE RECOGNITION SYSTEM
-"""
 
 import pyttsx3
 import speech_recognition as sr
@@ -797,3 +792,4 @@ if __name__ == "__main__":
         disha.continuous_listen()
     except KeyboardInterrupt:
         disha.stop()
+
